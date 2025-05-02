@@ -75,7 +75,7 @@ resource "aws_bedrockagent_agent_collaborator" "new_association" {
   agent_id                   = var.supervisor_id
   agent_version              = "DRAFT"
   collaboration_instruction  = "You are a collaborator. Do what the supervisor tells you to do"
-  collaborator_name          = var.collaborator_name
+  collaborator_name          = "${var.collaborator_name}-${formatdate("DDMMYYHHmmss", timestamp())}"
   relay_conversation_history = "TO_COLLABORATOR"
   prepare_agent              = false
 
