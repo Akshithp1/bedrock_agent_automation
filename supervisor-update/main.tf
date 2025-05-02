@@ -34,7 +34,6 @@ variable "new_alias_id" {
 }
 
 # Disassociate existing collaborator
-# Disassociate existing collaborator
 resource "null_resource" "disassociate_collaborator" {
   provisioner "local-exec" {
     command = <<-EOF
@@ -70,7 +69,7 @@ resource "time_sleep" "wait_after_disassociate" {
 resource "aws_bedrockagent_agent_collaborator" "new_association" {
   agent_id                   = var.supervisor_id
   collaboration_instruction  = "You are a collaborator. Do what the supervisor tells you to do"
-  collaborator_name          = "my-agent-collaborator-1"
+  collaborator_name          = "my-agent-collaborator-${formatdate("DDMMYY-hhmmss", timestamp())}"
   relay_conversation_history = "TO_COLLABORATOR"
   prepare_agent              = false
 
