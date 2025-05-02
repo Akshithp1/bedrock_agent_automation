@@ -84,6 +84,15 @@ resource "aws_bedrockagent_agent_collaborator" "new_association" {
   }
 
   depends_on = [null_resource.disassociate_collaborator]
+
+   # Add this lifecycle block to force new resource creation
+  lifecycle {
+    create_before_destroy = false
+    replace_triggered_by = [
+      # Force replacement when alias changes
+      var.new_alias_id
+    ]
+  }
 }
 
 data "aws_region" "current" {}
