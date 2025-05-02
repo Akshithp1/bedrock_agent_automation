@@ -32,7 +32,11 @@ jobs:
 
       - name: Terraform Init
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=supervisor-update/terraform.tfstate" \
+            -backend-config="region=us-east-1"
 
       - name: Create tfvars file
         working-directory: ${{ env.TF_WORKING_DIR }}
