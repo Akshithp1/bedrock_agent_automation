@@ -38,7 +38,7 @@ variable "collaborator_name" {
   description = "Name of the collaborator (my-agent-collaborator-1 or my-agent-collaborator-2)"
 }
 
-# Update the disassociate_collaborator resource
+# Disassociate existing collaborator
 resource "null_resource" "disassociate_collaborator" {
   provisioner "local-exec" {
     command = <<-EOF
@@ -46,7 +46,7 @@ resource "null_resource" "disassociate_collaborator" {
       CURRENT_COLLAB=$(aws bedrock-agent list-agent-collaborators \
         --agent-id ${var.supervisor_id} \
         --agent-version "DRAFT" \
-        --query "agentCollaboratorSummaries[?starts_with(collaboratorName, '${var.collaborator_name}-')].collaboratorId" \
+        --query "agentCollaboratorSummaries[?collaboratorName=='${var.collaborator_name}'].collaboratorId" \
         --output text)
       
       if [ ! -z "$CURRENT_COLLAB" ]; then
@@ -75,7 +75,7 @@ resource "aws_bedrockagent_agent_collaborator" "new_association" {
   agent_id                   = var.supervisor_id
   agent_version              = "DRAFT"
   collaboration_instruction  = "You are a collaborator. Do what the supervisor tells you to do"
-  collaborator_name          = "${var.collaborator_name}-${formatdate("DDMMYYHHmmss", timestamp())}"
+  collaborator_name          = var.collaborator_name 
   relay_conversation_history = "TO_COLLABORATOR"
   prepare_agent              = false
 
