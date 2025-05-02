@@ -34,16 +34,31 @@ variable "new_alias_id" {
 }
 
 # Disassociate existing collaborator
+# Disassociate existing collaborator
 resource "null_resource" "disassociate_collaborator" {
   provisioner "local-exec" {
     command = <<-EOF
-      aws bedrock-agent disassociate-agent-collaborator \
+      # Get current collaborator ID for the agent
+      CURRENT_COLLAB=$(aws bedrock-agent list-agent-collaborators \
         --agent-id ${var.supervisor_id} \
-        --agent-version DRAFT \
-        --collaborator-id ${var.collaborator_id}
+        --agent-version 1 \
+        --query "agentCollaboratorSummaries[?contains(agentDescriptor.aliasArn, '${var.collaborator_id}')].collaboratorId" \
+        --output text)
+      
+      if [ ! -z "$CURRENT_COLLAB" ]; then
+        # If exists, disassociate using the collaborator ID
+        aws bedrock-agent disassociate-agent-collaborator \
+          --agent-id ${var.supervisor_id} \
+          --agent-version 1 \
+          --collaborator-id $CURRENT_COLLAB
+      else
+        echo "No existing association found, skipping disassociation"
+      fi
     EOF
+    interpreter = ["/bin/bash", "-c"]
   }
 }
+
 
 # Wait after disassociation
 resource "time_sleep" "wait_after_disassociate" {
