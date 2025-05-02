@@ -41,7 +41,7 @@ resource "null_resource" "disassociate_collaborator" {
       # Get current collaborator ID for the agent
       CURRENT_COLLAB=$(aws bedrock-agent list-agent-collaborators \
         --agent-id ${var.supervisor_id} \
-        --agent-version 1 \
+        --agent-version "DRAFT" \
         --query "agentCollaboratorSummaries[?contains(agentDescriptor.aliasArn, '${var.collaborator_id}')].collaboratorId" \
         --output text)
       
@@ -49,7 +49,7 @@ resource "null_resource" "disassociate_collaborator" {
         # If exists, disassociate using the collaborator ID
         aws bedrock-agent disassociate-agent-collaborator \
           --agent-id ${var.supervisor_id} \
-          --agent-version 1 \
+          --agent-version "DRAFT" \
           --collaborator-id $CURRENT_COLLAB
       else
         echo "No existing association found, skipping disassociation"
