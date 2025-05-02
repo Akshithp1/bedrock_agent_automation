@@ -70,12 +70,14 @@ resource "time_sleep" "wait_after_disassociate" {
   depends_on = [null_resource.disassociate_collaborator]
 }
 
-# Update the new_association resource
-resource "aws_bedrockagent_agent_collaborator" "new_association" {
+# New collaborative resources with count
+resource "aws_bedrockagent_agent_collaborator" "collaborator_1" {
+  count = var.collaborator_name == "my-agent-collaborator-1" ? 1 : 0
+
   agent_id                   = var.supervisor_id
   agent_version              = "DRAFT"
-  collaboration_instruction  = "You are a collaborator. Do what the supervisor tells you to do"
-  collaborator_name          = var.collaborator_name 
+  collaboration_instruction  = "You are collaborator 1. Do what the supervisor tells you to do"
+  collaborator_name          = "my-agent-collaborator-1"
   relay_conversation_history = "TO_COLLABORATOR"
   prepare_agent              = false
 
@@ -83,9 +85,26 @@ resource "aws_bedrockagent_agent_collaborator" "new_association" {
     alias_arn = "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent-alias/${var.collaborator_id}/${var.new_alias_id}"
   }
 
-  depends_on = [null_resource.disassociate_collaborator]
-
+  depends_on = [time_sleep.wait_after_disassociate]
 }
+
+resource "aws_bedrockagent_agent_collaborator" "collaborator_2" {
+  count = var.collaborator_name == "my-agent-collaborator-2" ? 1 : 0
+
+  agent_id                   = var.supervisor_id
+  agent_version              = "DRAFT"
+  collaboration_instruction  = "You are collaborator 2. Do what the supervisor tells you to do"
+  collaborator_name          = "my-agent-collaborator-2"
+  relay_conversation_history = "TO_COLLABORATOR"
+  prepare_agent              = false
+
+  agent_descriptor {
+    alias_arn = "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent-alias/${var.collaborator_id}/${var.new_alias_id}"
+  }
+
+  depends_on = [time_sleep.wait_after_disassociate]
+}
+
 
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
