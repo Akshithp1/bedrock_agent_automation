@@ -46,7 +46,7 @@ resource "null_resource" "disassociate_collaborator" {
       CURRENT_COLLAB=$(aws bedrock-agent list-agent-collaborators \
         --agent-id ${var.supervisor_id} \
         --agent-version "DRAFT" \
-        --query "agentCollaboratorSummaries[?collaboratorName=='${var.collaborator_name}'].collaboratorId" \
+        --query "agentCollaboratorSummaries[?starts_with(collaboratorName, '${var.collaborator_name}-')].collaboratorId" \
         --output text)
       
       if [ ! -z "$CURRENT_COLLAB" ]; then
