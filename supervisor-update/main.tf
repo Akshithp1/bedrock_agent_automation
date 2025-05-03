@@ -78,6 +78,12 @@ resource "null_resource" "disassociate_collaborator" {
   }
 }
 
+# Wait after disassociation
+resource "time_sleep" "wait_after_disassociate" {
+  create_duration = "30s"
+  depends_on = [null_resource.disassociate_collaborator]
+}
+
 # Separate resources for each collaborator with for_each
 resource "aws_bedrockagent_agent_collaborator" "collaborators" {
   for_each = {
@@ -101,3 +107,4 @@ resource "aws_bedrockagent_agent_collaborator" "collaborators" {
 
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
+
