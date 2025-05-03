@@ -53,7 +53,13 @@ resource "null_resource" "disassociate_collaborator" {
       
       echo "Starting disassociation process for agent ${var.collaborator_id}..."
       
-      # Get all collaborators and find one with our agent ID in the alias ARN
+      # First, list all current collaborators to log the state before changes
+      echo "Current collaborators before changes:"
+      aws bedrock-agent list-agent-collaborators \
+        --agent-id ${var.supervisor_id} \
+        --agent-version "DRAFT"
+      
+      # Get only this specific collaborator's association
       CURRENT_COLLAB=$(aws bedrock-agent list-agent-collaborators \
         --agent-id ${var.supervisor_id} \
         --agent-version "DRAFT" \
@@ -63,7 +69,7 @@ resource "null_resource" "disassociate_collaborator" {
       if [ ! -z "$CURRENT_COLLAB" ]; then
         echo "Found existing collaborator: $CURRENT_COLLAB"
         
-        # Disassociate
+        # Disassociate only this specific collaborator
         aws bedrock-agent disassociate-agent-collaborator \
           --agent-id ${var.supervisor_id} \
           --agent-version "DRAFT" \
@@ -72,7 +78,7 @@ resource "null_resource" "disassociate_collaborator" {
         echo "Waiting for disassociation to complete..."
         sleep 30
         
-        # Verify disassociation
+        # Verify only this specific collaborator was removed
         VERIFY=$(aws bedrock-agent list-agent-collaborators \
           --agent-id ${var.supervisor_id} \
           --agent-version "DRAFT" \
@@ -80,19 +86,24 @@ resource "null_resource" "disassociate_collaborator" {
           --output text)
         
         if [ ! -z "$VERIFY" ]; then
-          echo "Error: Collaborator still exists after disassociation"
+          echo "Error: This collaborator still exists after disassociation"
           exit 1
         else
-          echo "Successfully disassociated collaborator"
+          echo "Successfully disassociated this collaborator"
         fi
       else
         echo "No existing association found for agent ${var.collaborator_id}"
       fi
+      
+      # Log final state of collaborators
+      echo "Current collaborators after changes:"
+      aws bedrock-agent list-agent-collaborators \
+        --agent-id ${var.supervisor_id} \
+        --agent-version "DRAFT"
     EOF
     interpreter = ["/bin/bash", "-c"]
   }
 }
-
 
 # Wait after disassociation
 resource "time_sleep" "wait_after_disassociate" {
