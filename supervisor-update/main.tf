@@ -40,6 +40,11 @@ variable "collaborator_name" {
 
 # Disassociate existing collaborator
 resource "null_resource" "disassociate_collaborator" {
+  triggers = {
+    collaborator_name = var.collaborator_name
+    new_alias_id = var.new_alias_id
+  }
+
   provisioner "local-exec" {
     command = <<-EOF
       # Get current collaborator ID for the specific agent
@@ -50,19 +55,35 @@ resource "null_resource" "disassociate_collaborator" {
         --output text)
       
       if [ ! -z "$CURRENT_COLLAB" ]; then
+        echo "Found existing collaborator: $CURRENT_COLLAB"
         # If exists, disassociate only this collaborator
         aws bedrock-agent disassociate-agent-collaborator \
           --agent-id ${var.supervisor_id} \
           --agent-version "DRAFT" \
           --collaborator-id $CURRENT_COLLAB
+
+        # Wait for disassociation to complete
+        echo "Waiting for disassociation to complete..."
+        sleep 30
+
+        # Verify disassociation
+        VERIFY=$(aws bedrock-agent list-agent-collaborators \
+          --agent-id ${var.supervisor_id} \
+          --agent-version "DRAFT" \
+          --query "agentCollaboratorSummaries[?collaboratorName=='${var.collaborator_name}'].collaboratorId" \
+          --output text)
+        
+        if [ ! -z "$VERIFY" ]; then
+          echo "Error: Collaborator still exists after disassociation"
+          exit 1
+        fi
       else
-        echo "No existing association found for this collaborator, skipping disassociation"
+        echo "No existing association found for this collaborator, proceeding..."
       fi
     EOF
     interpreter = ["/bin/bash", "-c"]
   }
 }
-
 
 # Wait after disassociation
 resource "time_sleep" "wait_after_disassociate" {
