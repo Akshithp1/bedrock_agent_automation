@@ -85,8 +85,6 @@ resource "aws_bedrockagent_agent_collaborator" "collaborators" {
     "my-agent-collaborator-2" = var.collaborator_name == "my-agent-collaborator-2"
   }
 
-  count = each.value ? 1 : 0
-
   agent_id                   = var.supervisor_id
   agent_version              = "DRAFT"
   collaboration_instruction  = "You are ${each.key}. Do what the supervisor tells you to do"
@@ -95,7 +93,7 @@ resource "aws_bedrockagent_agent_collaborator" "collaborators" {
   prepare_agent              = false
 
   agent_descriptor {
-    alias_arn = "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent-alias/${var.collaborator_id}/${var.new_alias_id}"
+    alias_arn = each.value ? "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent-alias/${var.collaborator_id}/${var.new_alias_id}" : null
   }
 
   depends_on = [time_sleep.wait_after_disassociate]
