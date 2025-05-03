@@ -40,25 +40,24 @@ variable "collaborator_name" {
 
 # Disassociate existing collaborator
 resource "null_resource" "disassociate_collaborator" {
-  # Add triggers to ensure it runs when needed
   triggers = {
-    collaborator_name = var.collaborator_name
+    collaborator_id = var.collaborator_id
     new_alias_id = var.new_alias_id
-    timestamp = timestamp()  # Force run every time
+    timestamp = timestamp()
   }
 
   provisioner "local-exec" {
     command = <<-EOF
       #!/bin/bash
-      set -e  # Exit on error
+      set -e
       
-      echo "Starting disassociation process for ${var.collaborator_name}..."
+      echo "Starting disassociation process for agent ${var.collaborator_id}..."
       
-      # Get current collaborator ID
+      # Get all collaborators and find one with our agent ID in the alias ARN
       CURRENT_COLLAB=$(aws bedrock-agent list-agent-collaborators \
         --agent-id ${var.supervisor_id} \
         --agent-version "DRAFT" \
-        --query "agentCollaboratorSummaries[?collaboratorName=='${var.collaborator_name}'].collaboratorId" \
+        --query "agentCollaboratorSummaries[?contains(agentDescriptor.aliasArn, '${var.collaborator_id}')].collaboratorId" \
         --output text)
       
       if [ ! -z "$CURRENT_COLLAB" ]; then
@@ -77,7 +76,7 @@ resource "null_resource" "disassociate_collaborator" {
         VERIFY=$(aws bedrock-agent list-agent-collaborators \
           --agent-id ${var.supervisor_id} \
           --agent-version "DRAFT" \
-          --query "agentCollaboratorSummaries[?collaboratorName=='${var.collaborator_name}'].collaboratorId" \
+          --query "agentCollaboratorSummaries[?contains(agentDescriptor.aliasArn, '${var.collaborator_id}')].collaboratorId" \
           --output text)
         
         if [ ! -z "$VERIFY" ]; then
@@ -87,7 +86,7 @@ resource "null_resource" "disassociate_collaborator" {
           echo "Successfully disassociated collaborator"
         fi
       else
-        echo "No existing association found for ${var.collaborator_name}"
+        echo "No existing association found for agent ${var.collaborator_id}"
       fi
     EOF
     interpreter = ["/bin/bash", "-c"]
