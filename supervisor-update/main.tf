@@ -40,9 +40,21 @@ variable "collaborator_name" {
 
 # Disassociate existing collaborator
 resource "null_resource" "disassociate_collaborator" {
+  # Add triggers to ensure it runs when needed
+  triggers = {
+    collaborator_name = var.collaborator_name
+    new_alias_id = var.new_alias_id
+    timestamp = timestamp()  # Force run every time
+  }
+
   provisioner "local-exec" {
     command = <<-EOF
-      # Get current collaborator ID for the specific agent
+      #!/bin/bash
+      set -e  # Exit on error
+      
+      echo "Starting disassociation process for ${var.collaborator_name}..."
+      
+      # Get current collaborator ID
       CURRENT_COLLAB=$(aws bedrock-agent list-agent-collaborators \
         --agent-id ${var.supervisor_id} \
         --agent-version "DRAFT" \
@@ -50,18 +62,38 @@ resource "null_resource" "disassociate_collaborator" {
         --output text)
       
       if [ ! -z "$CURRENT_COLLAB" ]; then
-        # If exists, disassociate only this collaborator
+        echo "Found existing collaborator: $CURRENT_COLLAB"
+        
+        # Disassociate
         aws bedrock-agent disassociate-agent-collaborator \
           --agent-id ${var.supervisor_id} \
           --agent-version "DRAFT" \
           --collaborator-id $CURRENT_COLLAB
+        
+        echo "Waiting for disassociation to complete..."
+        sleep 30
+        
+        # Verify disassociation
+        VERIFY=$(aws bedrock-agent list-agent-collaborators \
+          --agent-id ${var.supervisor_id} \
+          --agent-version "DRAFT" \
+          --query "agentCollaboratorSummaries[?collaboratorName=='${var.collaborator_name}'].collaboratorId" \
+          --output text)
+        
+        if [ ! -z "$VERIFY" ]; then
+          echo "Error: Collaborator still exists after disassociation"
+          exit 1
+        else
+          echo "Successfully disassociated collaborator"
+        fi
       else
-        echo "No existing association found for this collaborator, skipping disassociation"
+        echo "No existing association found for ${var.collaborator_name}"
       fi
     EOF
     interpreter = ["/bin/bash", "-c"]
   }
 }
+
 
 # Wait after disassociation
 resource "time_sleep" "wait_after_disassociate" {
