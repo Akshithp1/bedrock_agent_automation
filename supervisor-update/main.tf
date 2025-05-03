@@ -87,8 +87,7 @@ resource "time_sleep" "wait_after_disassociate" {
 # Separate resources for each collaborator with for_each
 resource "aws_bedrockagent_agent_collaborator" "collaborators" {
   for_each = {
-    "my-agent-collaborator-1" = var.collaborator_name == "my-agent-collaborator-1"
-    "my-agent-collaborator-2" = var.collaborator_name == "my-agent-collaborator-2"
+    "${var.collaborator_name}" = true  # Only create for the active collaborator
   }
 
   agent_id                   = var.supervisor_id
@@ -99,7 +98,7 @@ resource "aws_bedrockagent_agent_collaborator" "collaborators" {
   prepare_agent              = false
 
   agent_descriptor {
-    alias_arn = each.value ? "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent-alias/${var.collaborator_id}/${var.new_alias_id}" : null
+    alias_arn = "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent-alias/${var.collaborator_id}/${var.new_alias_id}"
   }
 
   depends_on = [time_sleep.wait_after_disassociate]
