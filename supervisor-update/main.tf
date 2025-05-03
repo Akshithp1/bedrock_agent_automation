@@ -111,7 +111,7 @@ resource "aws_bedrockagent_agent_collaborator" "collaborator_1" {
     alias_arn = "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent-alias/${var.collaborator_1_id}/${var.collaborator_1_alias_id}"
   }
 
-  depends_on = [time_sleep.wait_after_disassociate]
+  depends_on = [null_resource.disassociate_collaborator]
 }
 
 resource "aws_bedrockagent_agent_collaborator" "collaborator_2" {
@@ -128,5 +128,5 @@ resource "aws_bedrockagent_agent_collaborator" "collaborator_2" {
     alias_arn = "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent-alias/${var.collaborator_2_id}/${var.collaborator_2_alias_id}"
   }
 
-  depends_on = [time_sleep.wait_after_disassociate]
+  depends_on = [null_resource.disassociate_collaborator]
 }
