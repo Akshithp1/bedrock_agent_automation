@@ -41,9 +41,8 @@ variable "collaborator_name" {
 # Disassociate existing collaborator
 resource "null_resource" "disassociate_collaborator" {
   triggers = {
-    collaborator_id = var.collaborator_id
+    collaborator_name = var.collaborator_name
     new_alias_id = var.new_alias_id
-    timestamp = timestamp()
   }
 
   provisioner "local-exec" {
@@ -51,23 +50,23 @@ resource "null_resource" "disassociate_collaborator" {
       #!/bin/bash
       set -e
       
-      echo "Starting disassociation process for agent ${var.collaborator_id}..."
+      echo "Starting disassociation process for ${var.collaborator_name}..."
       
-      # First, list all current collaborators to log the state before changes
-      echo "Current collaborators before changes:"
-      aws bedrock-agent list-agent-collaborators \
-        --agent-id ${var.supervisor_id} \
-        --agent-version "DRAFT"
-      
-      # Get only this specific collaborator's association
+      # Get only the collaborator with exact name match
       CURRENT_COLLAB=$(aws bedrock-agent list-agent-collaborators \
         --agent-id ${var.supervisor_id} \
         --agent-version "DRAFT" \
-        --query "agentCollaboratorSummaries[?contains(agentDescriptor.aliasArn, '${var.collaborator_id}')].collaboratorId" \
+        --query "agentCollaboratorSummaries[?collaboratorName=='${var.collaborator_name}'].collaboratorId" \
         --output text)
       
       if [ ! -z "$CURRENT_COLLAB" ]; then
-        echo "Found existing collaborator: $CURRENT_COLLAB"
+        echo "Found existing collaborator with name ${var.collaborator_name}: $CURRENT_COLLAB"
+        
+        # List all collaborators before disassociation
+        echo "Collaborators before disassociation:"
+        aws bedrock-agent list-agent-collaborators \
+          --agent-id ${var.supervisor_id} \
+          --agent-version "DRAFT"
         
         # Disassociate only this specific collaborator
         aws bedrock-agent disassociate-agent-collaborator \
@@ -82,43 +81,34 @@ resource "null_resource" "disassociate_collaborator" {
         VERIFY=$(aws bedrock-agent list-agent-collaborators \
           --agent-id ${var.supervisor_id} \
           --agent-version "DRAFT" \
-          --query "agentCollaboratorSummaries[?contains(agentDescriptor.aliasArn, '${var.collaborator_id}')].collaboratorId" \
+          --query "agentCollaboratorSummaries[?collaboratorName=='${var.collaborator_name}'].collaboratorId" \
           --output text)
         
         if [ ! -z "$VERIFY" ]; then
-          echo "Error: This collaborator still exists after disassociation"
+          echo "Error: ${var.collaborator_name} still exists after disassociation"
           exit 1
-        else
-          echo "Successfully disassociated this collaborator"
         fi
+        
+        # List all collaborators after disassociation
+        echo "Collaborators after disassociation:"
+        aws bedrock-agent list-agent-collaborators \
+          --agent-id ${var.supervisor_id} \
+          --agent-version "DRAFT"
       else
-        echo "No existing association found for agent ${var.collaborator_id}"
+        echo "No existing association found for ${var.collaborator_name}"
       fi
-      
-      # Log final state of collaborators
-      echo "Current collaborators after changes:"
-      aws bedrock-agent list-agent-collaborators \
-        --agent-id ${var.supervisor_id} \
-        --agent-version "DRAFT"
     EOF
     interpreter = ["/bin/bash", "-c"]
   }
 }
 
-# Wait after disassociation
-resource "time_sleep" "wait_after_disassociate" {
-  create_duration = "30s"
-  depends_on = [null_resource.disassociate_collaborator]
-}
-
-# Collaborator 1
-resource "aws_bedrockagent_agent_collaborator" "collaborator_1" {
-  count = var.collaborator_name == "my-agent-collaborator-1" ? 1 : 0
+# Associate Collaborator
+resource "aws_bedrockagent_agent_collaborator" "collaborator" {
 
   agent_id                   = var.supervisor_id
   agent_version              = "DRAFT"
-  collaboration_instruction  = "You are collaborator 1. Do what the supervisor tells you to do"
-  collaborator_name          = "my-agent-collaborator-1"
+  collaboration_instruction  = "You are collaborator. Do what the supervisor tells you to do"
+  collaborator_name          = var.collaborator_name
   relay_conversation_history = "TO_COLLABORATOR"
   prepare_agent              = false
 
@@ -127,24 +117,14 @@ resource "aws_bedrockagent_agent_collaborator" "collaborator_1" {
   }
 
   depends_on = [null_resource.disassociate_collaborator]
-}
 
-# Collaborator 2
-resource "aws_bedrockagent_agent_collaborator" "collaborator_2" {
-  count = var.collaborator_name == "my-agent-collaborator-2" ? 1 : 0
-
-  agent_id                   = var.supervisor_id
-  agent_version              = "DRAFT"
-  collaboration_instruction  = "You are collaborator 2. Do what the supervisor tells you to do"
-  collaborator_name          = "my-agent-collaborator-2"
-  relay_conversation_history = "TO_COLLABORATOR"
-  prepare_agent              = false
-
-  agent_descriptor {
-    alias_arn = "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent-alias/${var.collaborator_id}/${var.new_alias_id}"
+  # Add lifecycle block to prevent destroy of other collaborator
+  lifecycle {
+    ignore_changes = [
+      # Ignore changes to other collaborators
+      agent_descriptor,
+    ]
   }
-
-  depends_on = [null_resource.disassociate_collaborator]
 }
 
 data "aws_region" "current" {}
