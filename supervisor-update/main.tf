@@ -56,7 +56,7 @@ resource "null_resource" "disassociate_collaborator" {
       #!/bin/bash
       set -e
 
-      echo "Starting disassociation process for agent ${{ var.collaborator_name }}..."
+      echo "Starting disassociation process for agent ${ var.collaborator_name }..."
 
       TARGET_ID=""
       if [ "${var.collaborator_name}" = "my-agent-collaborator-1" ]; then
