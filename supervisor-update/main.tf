@@ -40,11 +40,6 @@ variable "collaborator_name" {
 
 # Disassociate existing collaborator
 resource "null_resource" "disassociate_collaborator" {
-  triggers = {
-    collaborator_name = var.collaborator_name
-    new_alias_id = var.new_alias_id
-  }
-
   provisioner "local-exec" {
     command = <<-EOF
       # Get current collaborator ID for the specific agent
@@ -55,30 +50,13 @@ resource "null_resource" "disassociate_collaborator" {
         --output text)
       
       if [ ! -z "$CURRENT_COLLAB" ]; then
-        echo "Found existing collaborator: $CURRENT_COLLAB"
         # If exists, disassociate only this collaborator
         aws bedrock-agent disassociate-agent-collaborator \
           --agent-id ${var.supervisor_id} \
           --agent-version "DRAFT" \
           --collaborator-id $CURRENT_COLLAB
-
-        # Wait for disassociation to complete
-        echo "Waiting for disassociation to complete..."
-        sleep 30
-
-        # Verify disassociation
-        VERIFY=$(aws bedrock-agent list-agent-collaborators \
-          --agent-id ${var.supervisor_id} \
-          --agent-version "DRAFT" \
-          --query "agentCollaboratorSummaries[?collaboratorName=='${var.collaborator_name}'].collaboratorId" \
-          --output text)
-        
-        if [ ! -z "$VERIFY" ]; then
-          echo "Error: Collaborator still exists after disassociation"
-          exit 1
-        fi
       else
-        echo "No existing association found for this collaborator, proceeding..."
+        echo "No existing association found for this collaborator, skipping disassociation"
       fi
     EOF
     interpreter = ["/bin/bash", "-c"]
@@ -91,7 +69,7 @@ resource "time_sleep" "wait_after_disassociate" {
   depends_on = [null_resource.disassociate_collaborator]
 }
 
-# New collaborative resources with count
+# Collaborator 1
 resource "aws_bedrockagent_agent_collaborator" "collaborator_1" {
   count = var.collaborator_name == "my-agent-collaborator-1" ? 1 : 0
 
@@ -106,9 +84,10 @@ resource "aws_bedrockagent_agent_collaborator" "collaborator_1" {
     alias_arn = "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent-alias/${var.collaborator_id}/${var.new_alias_id}"
   }
 
-  depends_on = [time_sleep.wait_after_disassociate]
+  depends_on = [null_resource.disassociate_collaborator]
 }
 
+# Collaborator 2
 resource "aws_bedrockagent_agent_collaborator" "collaborator_2" {
   count = var.collaborator_name == "my-agent-collaborator-2" ? 1 : 0
 
@@ -123,9 +102,8 @@ resource "aws_bedrockagent_agent_collaborator" "collaborator_2" {
     alias_arn = "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent-alias/${var.collaborator_id}/${var.new_alias_id}"
   }
 
-  depends_on = [time_sleep.wait_after_disassociate]
+  depends_on = [null_resource.disassociate_collaborator]
 }
-
 
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
