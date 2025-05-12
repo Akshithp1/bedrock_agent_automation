@@ -10,13 +10,19 @@ env:
 
 jobs:
   update-supervisor:
-    if: github.event.client_payload.agent_id == secrets.COLLABORATOR_1_ID
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
     
     steps:
+      - name: Check Collaborator ID
+        run: |
+          if [ "${{ github.event.client_payload.agent_id }}" != "${{ secrets.COLLABORATOR_1_ID }}" ]; then
+            echo "Wrong collaborator ID"
+            exit 1
+          fi
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -36,7 +42,7 @@ jobs:
         run: |
           terraform init \
             -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
-            -backend-config="key=supervisor-update-collab1/terraform.tfstate" \
+            -backend-config="key=supervisor-update-collab-1/terraform.tfstate" \
             -backend-config="region=${{ env.AWS_REGION }}"
 
       - name: Create tfvars file
