@@ -47,25 +47,45 @@ resource "null_resource" "disassociate_collaborator" {
       #!/bin/bash
       set -e
 
-      echo "Starting disassociation process..."
-      echo "Attempting to disassociate collaborator ID: Collab-1"
+      COLLAB_NAME="Collab-1"  
+      echo "Starting disassociation process for $COLLAB_NAME..."
       
-      COLLAB=$(aws bedrock-agent list-agent-collaborators \
+      # Get current collaborator by name
+      CURRENT_COLLAB=$(aws bedrock-agent list-agent-collaborators \
         --agent-id ${var.supervisor_id} \
-        --agent-version DRAFT \
-        --query "agentCollaboratorSummaries[?collaboratorName=='Collab-1'].collaboratorId" \
+        --agent-version "DRAFT" \
+        --query "agentCollaboratorSummaries[?collaboratorName=='$COLLAB_NAME'].collaboratorId" \
         --output text)
-
-      if [ ! -z "$COLLAB" ]; then
-        echo "Found existing collaborator: $COLLAB"
+      
+      if [ ! -z "$CURRENT_COLLAB" ]; then
+        echo "Found existing collaborator: $CURRENT_COLLAB"
         aws bedrock-agent disassociate-agent-collaborator \
           --agent-id ${var.supervisor_id} \
-          --agent-version DRAFT \
-          --collaborator-id $COLLAB
+          --agent-version "DRAFT" \
+          --collaborator-id $CURRENT_COLLAB
         
         echo "Waiting for disassociation to complete..."
         sleep 30
+        
+        # Verify disassociation
+        VERIFY=$(aws bedrock-agent list-agent-collaborators \
+          --agent-id ${var.supervisor_id} \
+          --agent-version "DRAFT" \
+          --query "agentCollaboratorSummaries[?collaboratorName=='$COLLAB_NAME'].collaboratorId" \
+          --output text)
+          
+        if [ ! -z "$VERIFY" ]; then
+          echo "Error: Disassociation failed"
+          exit 1
+        fi
+      else
+        echo "No existing association found for $COLLAB_NAME"
       fi
+      
+      echo "Current collaborators:"
+      aws bedrock-agent list-agent-collaborators \
+        --agent-id ${var.supervisor_id} \
+        --agent-version "DRAFT"
     EOT
     interpreter = ["/bin/bash", "-c"]
   }
