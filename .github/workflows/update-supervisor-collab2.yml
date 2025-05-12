@@ -10,13 +10,19 @@ env:
 
 jobs:
   update-supervisor:
-    if: github.event.client_payload.agent_id == secrets.COLLABORATOR_2_ID
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
     
     steps:
+      - name: Check Collaborator ID
+        run: |
+          if [ "${{ github.event.client_payload.agent_id }}" != "${{ secrets.COLLABORATOR_2_ID }}" ]; then
+            echo "Wrong collaborator ID"
+            exit 1
+          fi
+          
       - name: Checkout code
         uses: actions/checkout@v4
 
