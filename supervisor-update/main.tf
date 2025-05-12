@@ -66,32 +66,30 @@ resource "null_resource" "disassociate_collaborator" {
 
       echo "Starting disassociation for ${var.collaborator_name}"
 
-      case "${var.collaborator_name}" in
-        "my-agent-collaborator-1")
-          TARGET_ID=${var.collaborator_1_alias_id}
-          ;;
-        "my-agent-collaborator-2")
-          TARGET_ID=${var.collaborator_2_alias_id}
-          ;;
-        *)
-          echo "Unknown collaborator name"
-          exit 1
-          ;;
-      esac
-
+      # Get the collaborator ID based on the name
       COLLAB=$(aws bedrock-agent list-agent-collaborators \
         --agent-id ${var.supervisor_id} \
         --agent-version DRAFT \
-        --query "agentCollaboratorSummaries[?contains(agentDescriptor.aliasArn, '$${TARGET_ID}')].collaboratorId" \
+        --query "agentCollaboratorSummaries[?collaboratorName=='${var.collaborator_name}'].collaboratorId" \
         --output text)
 
       if [ ! -z "$COLLAB" ]; then
-        echo "Disassociating $$COLLAB"
+        echo "Found existing collaborator: $COLLAB"
         aws bedrock-agent disassociate-agent-collaborator \
           --agent-id ${var.supervisor_id} \
           --agent-version DRAFT \
           --collaborator-id $COLLAB
+        
+        echo "Waiting for disassociation to complete..."
+        sleep 30
+      else
+        echo "No existing association found for ${var.collaborator_name}"
       fi
+
+      echo "Current collaborators:"
+      aws bedrock-agent list-agent-collaborators \
+        --agent-id ${var.supervisor_id} \
+        --agent-version DRAFT
     EOT
     interpreter = ["/bin/bash", "-c"]
   }
