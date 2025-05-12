@@ -101,13 +101,13 @@ resource "time_sleep" "wait_after_disassociate" {
 }
 
 resource "aws_bedrockagent_agent_collaborator" "collaborator_1" {
-  count = var.collaborator_name == "my-agent-collaborator-1" ? 1 : 0
+  count = var.collaborator_name == "Collab-1" ? 1 : 0  # Match exact name
 
   agent_id                   = var.supervisor_id
   agent_version              = "DRAFT"
-  collaboration_instruction  = "You are collaborator 1. Follow supervisor."
-  collaborator_name          = "my-agent-collaborator-1"
-  relay_conversation_history = "TO_COLLABORATOR"
+  collaboration_instruction  = "You are a collaborator. Do what the superviosr tell you to do."
+  collaborator_name          = "Collab-1"
+  relay_conversation_history = "DISABLED"
   prepare_agent              = false
 
   agent_descriptor {
@@ -118,13 +118,13 @@ resource "aws_bedrockagent_agent_collaborator" "collaborator_1" {
 }
 
 resource "aws_bedrockagent_agent_collaborator" "collaborator_2" {
-  count = var.collaborator_name == "my-agent-collaborator-2" ? 1 : 0
+  count = var.collaborator_name == "Colab-2" ? 1 : 0  # Match exact name
 
   agent_id                   = var.supervisor_id
   agent_version              = "DRAFT"
-  collaboration_instruction  = "You are collaborator 2. Follow supervisor."
-  collaborator_name          = "my-agent-collaborator-2"
-  relay_conversation_history = "TO_COLLABORATOR"
+  collaboration_instruction  = "You are a collaborator. Do what the superviosr tell you to do."
+  collaborator_name          = "Colab-2"
+  relay_conversation_history = "DISABLED"
   prepare_agent              = false
 
   agent_descriptor {
