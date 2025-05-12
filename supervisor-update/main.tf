@@ -1,3 +1,5 @@
+# main.tf
+
 terraform {
   required_providers {
     aws = {
@@ -10,10 +12,9 @@ terraform {
     }
     time = {
       source  = "hashicorp/time"
-      version = "~> 0.9.0"
+      version = "~> 0.9"
     }
   }
-
   backend "s3" {}
 }
 
@@ -21,88 +22,92 @@ provider "aws" {
   region = "us-east-1"
 }
 
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
+
 variable "supervisor_id" {
   type = string
 }
 
 variable "collaborator_name" {
-  type        = string
-  description = "Name of the collaborator (my-agent-collaborator-1 or my-agent-collaborator-2)"
+  type = string
 }
 
 variable "collaborator_1_id" {
   type = string
-}
-
-variable "collaborator_1_alias_id" {
-  type = string
+  default = ""
 }
 
 variable "collaborator_2_id" {
   type = string
+  default = ""
+}
+
+variable "collaborator_1_alias_id" {
+  type = string
+  default = ""
 }
 
 variable "collaborator_2_alias_id" {
   type = string
+  default = ""
 }
 
 resource "null_resource" "disassociate_collaborator" {
   triggers = {
+    collaborator_name = var.collaborator_name
     timestamp = timestamp()
   }
 
   provisioner "local-exec" {
-    command = <<-EOF
+    command = <<EOT
       #!/bin/bash
       set -e
 
-      echo "Starting disassociation process for agent ${ var.collaborator_name }..."
+      echo "Starting disassociation for ${var.collaborator_name}"
 
-      TARGET_ID=""
-      if [ "${var.collaborator_name}" = "my-agent-collaborator-1" ]; then
-        TARGET_ID="${var.collaborator_1_id}"
-      elif [ "${var.collaborator_name}" = "my-agent-collaborator-2" ]; then
-        TARGET_ID="${var.collaborator_2_id}"
-      fi
+      case "${var.collaborator_name}" in
+        "my-agent-collaborator-1")
+          TARGET_ID=${var.collaborator_1_id}
+          ;;
+        "my-agent-collaborator-2")
+          TARGET_ID=${var.collaborator_2_id}
+          ;;
+        *)
+          echo "Unknown collaborator name"
+          exit 1
+          ;;
+      esac
 
-      if [ -z "$TARGET_ID" ]; then
-        echo "No collaborator ID found for ${var.collaborator_name}"
-        exit 0
-      fi
-
-      CURRENT_COLLAB=$(aws bedrock-agent list-agent-collaborators \
+      COLLAB=$(aws bedrock-agent list-agent-collaborators \
         --agent-id ${var.supervisor_id} \
-        --agent-version "DRAFT" \
-        --query "agentCollaboratorSummaries[?contains(agentDescriptor.aliasArn, '$TARGET_ID')].collaboratorId" \
+        --agent-version DRAFT \
+        --query "agentCollaboratorSummaries[?contains(agentDescriptor.aliasArn, '${TARGET_ID}')].collaboratorId" \
         --output text)
 
-      if [ ! -z "$CURRENT_COLLAB" ]; then
-        echo "Disassociating: $CURRENT_COLLAB"
+      if [ ! -z "$COLLAB" ]; then
+        echo "Disassociating $COLLAB"
         aws bedrock-agent disassociate-agent-collaborator \
           --agent-id ${var.supervisor_id} \
-          --agent-version "DRAFT" \
-          --collaborator-id $CURRENT_COLLAB
-        sleep 30
+          --agent-version DRAFT \
+          --collaborator-id $COLLAB
       fi
-    EOF
+    EOT
     interpreter = ["/bin/bash", "-c"]
   }
 }
 
 resource "time_sleep" "wait_after_disassociate" {
   create_duration = "30s"
-  depends_on      = [null_resource.disassociate_collaborator]
+  depends_on = [null_resource.disassociate_collaborator]
 }
-
-data "aws_region" "current" {}
-data "aws_caller_identity" "current" {}
 
 resource "aws_bedrockagent_agent_collaborator" "collaborator_1" {
   count = var.collaborator_name == "my-agent-collaborator-1" ? 1 : 0
 
   agent_id                   = var.supervisor_id
   agent_version              = "DRAFT"
-  collaboration_instruction  = "You are collaborator 1. Do what the supervisor tells you to do."
+  collaboration_instruction  = "You are collaborator 1. Follow supervisor."
   collaborator_name          = "my-agent-collaborator-1"
   relay_conversation_history = "TO_COLLABORATOR"
   prepare_agent              = false
@@ -111,7 +116,7 @@ resource "aws_bedrockagent_agent_collaborator" "collaborator_1" {
     alias_arn = "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent-alias/${var.collaborator_1_id}/${var.collaborator_1_alias_id}"
   }
 
-  depends_on = [null_resource.disassociate_collaborator]
+  depends_on = [time_sleep.wait_after_disassociate]
 }
 
 resource "aws_bedrockagent_agent_collaborator" "collaborator_2" {
@@ -119,7 +124,7 @@ resource "aws_bedrockagent_agent_collaborator" "collaborator_2" {
 
   agent_id                   = var.supervisor_id
   agent_version              = "DRAFT"
-  collaboration_instruction  = "You are collaborator 2. Do what the supervisor tells you to do."
+  collaboration_instruction  = "You are collaborator 2. Follow supervisor."
   collaborator_name          = "my-agent-collaborator-2"
   relay_conversation_history = "TO_COLLABORATOR"
   prepare_agent              = false
@@ -128,5 +133,5 @@ resource "aws_bedrockagent_agent_collaborator" "collaborator_2" {
     alias_arn = "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:agent-alias/${var.collaborator_2_id}/${var.collaborator_2_alias_id}"
   }
 
-  depends_on = [null_resource.disassociate_collaborator]
+  depends_on = [time_sleep.wait_after_disassociate]
 }
