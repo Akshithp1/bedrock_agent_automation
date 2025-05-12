@@ -60,7 +60,7 @@ resource "null_resource" "disassociate_collaborator" {
   }
 
   provisioner "local-exec" {
-    command = <<EOT
+    command = <<- "EOT"
       #!/bin/bash
       set -e
 
@@ -68,10 +68,10 @@ resource "null_resource" "disassociate_collaborator" {
 
       case "${var.collaborator_name}" in
         "my-agent-collaborator-1")
-          TARGET_ID=${var.collaborator_1_id}
+          TARGET_ID=${var.collaborator_1_alias_id}
           ;;
         "my-agent-collaborator-2")
-          TARGET_ID=${var.collaborator_2_id}
+          TARGET_ID=${var.collaborator_2_alias_id}
           ;;
         *)
           echo "Unknown collaborator name"
@@ -82,7 +82,7 @@ resource "null_resource" "disassociate_collaborator" {
       COLLAB=$(aws bedrock-agent list-agent-collaborators \
         --agent-id ${var.supervisor_id} \
         --agent-version DRAFT \
-        --query "agentCollaboratorSummaries[?contains(agentDescriptor.aliasArn, '\${TARGET_ID}')].collaboratorId" \
+        --query "agentCollaboratorSummaries[?contains(agentDescriptor.aliasArn, '${TARGET_ID}')].collaboratorId" \
         --output text)
 
       if [ ! -z "$COLLAB" ]; then
