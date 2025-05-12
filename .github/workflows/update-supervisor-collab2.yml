@@ -6,7 +6,7 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  TF_WORKING_DIR: ./supervisor-update-collab2
+  TF_WORKING_DIR: ./supervisor-update-collab-2
 
 jobs:
   update-supervisor:
