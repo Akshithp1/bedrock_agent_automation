@@ -43,13 +43,13 @@ jobs:
         run: |
           # Identify collaborator name based on agent ID
           if [ "${{ github.event.client_payload.agent_id }}" = "${{ secrets.COLLABORATOR_1_ID }}" ]; then
-            COLLAB_NAME="my-agent-collaborator-1"
+            COLLAB_NAME="Collab-1"
             COLLAB_1_ID="${{ secrets.COLLABORATOR_1_ID }}"
             COLLAB_1_ALIAS="${{ github.event.client_payload.new_alias_id }}"
             COLLAB_2_ID=""
             COLLAB_2_ALIAS=""
           elif [ "${{ github.event.client_payload.agent_id }}" = "${{ secrets.COLLABORATOR_2_ID }}" ]; then
-            COLLAB_NAME="my-agent-collaborator-2"
+            COLLAB_NAME="Colab-2"
             COLLAB_1_ID=""
             COLLAB_1_ALIAS=""
             COLLAB_2_ID="${{ secrets.COLLABORATOR_2_ID }}"
@@ -58,15 +58,6 @@ jobs:
             echo "Unknown collaborator ID"
             exit 1
           fi
-
-          cat > terraform.tfvars <<EOF
-          supervisor_id         = "${{ secrets.SUPERVISOR_ID }}"
-          collaborator_name     = "$COLLAB_NAME"
-          collaborator_1_id     = "$COLLAB_1_ID"
-          collaborator_1_alias_id = "$COLLAB_1_ALIAS"
-          collaborator_2_id     = "$COLLAB_2_ID"
-          collaborator_2_alias_id = "$COLLAB_2_ALIAS"
-          EOF
 
       - name: Terraform Plan
         working-directory: ${{ env.TF_WORKING_DIR }}
