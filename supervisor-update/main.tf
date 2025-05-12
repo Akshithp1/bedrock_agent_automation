@@ -82,7 +82,7 @@ resource "null_resource" "disassociate_collaborator" {
       COLLAB=$(aws bedrock-agent list-agent-collaborators \
         --agent-id ${var.supervisor_id} \
         --agent-version DRAFT \
-        --query "agentCollaboratorSummaries[?contains(agentDescriptor.aliasArn, '${TARGET_ID}')].collaboratorId" \
+        --query "agentCollaboratorSummaries[?contains(agentDescriptor.aliasArn, '\${TARGET_ID}')].collaboratorId" \
         --output text)
 
       if [ ! -z "$COLLAB" ]; then
