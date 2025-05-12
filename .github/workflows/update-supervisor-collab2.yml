@@ -2,7 +2,7 @@ name: Update Supervisor - Collaborator 2
 
 on:
   repository_dispatch:
-    types: [update_supervisor]
+    types: [update_supervisor-2]
 
 env:
   AWS_REGION: us-east-1
