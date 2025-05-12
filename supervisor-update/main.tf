@@ -60,7 +60,7 @@ resource "null_resource" "disassociate_collaborator" {
   }
 
   provisioner "local-exec" {
-    command = <<- "EOT"
+    command = <<- EOT
       #!/bin/bash
       set -e
 
@@ -82,15 +82,15 @@ resource "null_resource" "disassociate_collaborator" {
       COLLAB=$(aws bedrock-agent list-agent-collaborators \
         --agent-id ${var.supervisor_id} \
         --agent-version DRAFT \
-        --query "agentCollaboratorSummaries[?contains(agentDescriptor.aliasArn, '${TARGET_ID}')].collaboratorId" \
+        --query "agentCollaboratorSummaries[?contains(agentDescriptor.aliasArn, '$${TARGET_ID}')].collaboratorId" \
         --output text)
 
-      if [ ! -z "$COLLAB" ]; then
-        echo "Disassociating $COLLAB"
+      if [ ! -z "$$COLLAB" ]; then
+        echo "Disassociating $$COLLAB"
         aws bedrock-agent disassociate-agent-collaborator \
           --agent-id ${var.supervisor_id} \
           --agent-version DRAFT \
-          --collaborator-id $COLLAB
+          --collaborator-id $$COLLAB
       fi
     EOT
     interpreter = ["/bin/bash", "-c"]
