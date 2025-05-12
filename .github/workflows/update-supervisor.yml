@@ -14,7 +14,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,9 +36,9 @@ jobs:
           terraform init \
             -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
             -backend-config="key=supervisor-update/terraform.tfstate" \
-            -backend-config="region=us-east-1"
+            -backend-config="region=${{ env.AWS_REGION }}"
 
-     - name: Create tfvars file
+      - name: Create tfvars file
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           # Identify collaborator name based on agent ID
@@ -67,7 +67,6 @@ jobs:
           collaborator_2_id     = "$COLLAB_2_ID"
           collaborator_2_alias_id = "$COLLAB_2_ALIAS"
           EOF
-
 
       - name: Terraform Plan
         working-directory: ${{ env.TF_WORKING_DIR }}
