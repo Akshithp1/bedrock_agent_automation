@@ -38,9 +38,7 @@ variable "new_alias_id" {
 # Disassociate existing collaborator
 resource "null_resource" "disassociate_collaborator" {
   triggers = {
-    collaborator_id = var.collaborator_id
     new_alias_id = var.new_alias_id
-    timestamp = timestamp()  # Force run every time
   }
 
   provisioner "local-exec" {
@@ -51,13 +49,6 @@ resource "null_resource" "disassociate_collaborator" {
       COLLAB_NAME="Colab-2"
       echo "Starting disassociation process for $COLLAB_NAME..."
       
-      # List current state
-      echo "Current collaborators before disassociation:"
-      aws bedrock-agent list-agent-collaborators \
-        --agent-id ${var.supervisor_id} \
-        --agent-version "DRAFT"
-      
-      # Get current collaborator by name
       CURRENT_COLLAB=$(aws bedrock-agent list-agent-collaborators \
         --agent-id ${var.supervisor_id} \
         --agent-version "DRAFT" \
@@ -66,50 +57,16 @@ resource "null_resource" "disassociate_collaborator" {
       
       if [ ! -z "$CURRENT_COLLAB" ]; then
         echo "Found existing collaborator: $CURRENT_COLLAB"
+        aws bedrock-agent disassociate-agent-collaborator \
+          --agent-id ${var.supervisor_id} \
+          --agent-version "DRAFT" \
+          --collaborator-id $CURRENT_COLLAB
         
-        # Try disassociation with retries
-        MAX_RETRIES=3
-        for i in $(seq 1 $MAX_RETRIES); do
-          echo "Attempt $i to disassociate..."
-          aws bedrock-agent disassociate-agent-collaborator \
-            --agent-id ${var.supervisor_id} \
-            --agent-version "DRAFT" \
-            --collaborator-id $CURRENT_COLLAB || true
-          
-          echo "Waiting for disassociation to complete..."
-          sleep 30
-          
-          # Check if still exists
-          CHECK=$(aws bedrock-agent list-agent-collaborators \
-            --agent-id ${var.supervisor_id} \
-            --agent-version "DRAFT" \
-            --query "agentCollaboratorSummaries[?collaboratorName=='$COLLAB_NAME'].collaboratorId" \
-            --output text)
-            
-          if [ -z "$CHECK" ]; then
-            echo "Successfully disassociated"
-            break
-          fi
-          
-          if [ $i -eq $MAX_RETRIES ]; then
-            echo "Failed to disassociate after $MAX_RETRIES attempts"
-            exit 1
-          fi
-          
-          echo "Retrying..."
-          sleep 10
-        done
+        echo "Waiting for disassociation to complete..."
+        sleep 30
       else
         echo "No existing association found for $COLLAB_NAME"
       fi
-      
-      echo "Current collaborators after disassociation:"
-      aws bedrock-agent list-agent-collaborators \
-        --agent-id ${var.supervisor_id} \
-        --agent-version "DRAFT"
-      
-      # Final wait to ensure stability
-      sleep 10
     EOT
     interpreter = ["/bin/bash", "-c"]
   }
@@ -119,7 +76,7 @@ resource "null_resource" "disassociate_collaborator" {
 resource "aws_bedrockagent_agent_collaborator" "new_association" {
   agent_id                   = var.supervisor_id
   agent_version              = "DRAFT"
-  collaboration_instruction  = "You are a collaborator. Do what the supervisor tells you to do"
+  collaboration_instruction  = "You are collaborator 2. Do what the supervisor tells you to do"
   collaborator_name          = "Colab-2"
   relay_conversation_history = "DISABLED"
   prepare_agent              = false
@@ -130,8 +87,11 @@ resource "aws_bedrockagent_agent_collaborator" "new_association" {
 
   depends_on = [null_resource.disassociate_collaborator]
 
-  # Add lifecycle block to handle recreation
   lifecycle {
-    create_before_destroy = true
+    create_before_destroy = false
+    replace_triggered_by = [
+      null_resource.disassociate_collaborator.id,
+      var.new_alias_id
+    ]
   }
 }
