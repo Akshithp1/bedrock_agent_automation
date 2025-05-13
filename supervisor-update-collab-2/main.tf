@@ -87,11 +87,15 @@ resource "aws_bedrockagent_agent_collaborator" "new_association" {
 
   depends_on = [null_resource.disassociate_collaborator]
 
+  # Use keyed lifecycle instead
   lifecycle {
     create_before_destroy = false
-    replace_triggered_by = [
-      null_resource.disassociate_collaborator.id,
-      var.new_alias_id
+    replace_triggered_by =y = [
+      null_resource.disassociate_collaborator.id
     ]
   }
+
+  # Add key to force replacement
+  key = "${var.new_alias_id}-${null_resource.disassociate_collaborator.id}"
 }
+
