@@ -48,12 +48,12 @@ resource "aws_cloudwatch_event_api_destination" "github" {
   invocation_rate_limit_per_second = 1
 }
 
-# Add GitHub target
-resource "aws_cloudwatch_event_target" "github_actions" {
-  rule      = "detect-collaborator-alias-creation"  # Direct reference instead of data source
-  target_id = "TriggerGitHubAction"
+# Add GitHub target for Collaborator 1
+resource "aws_cloudwatch_event_target" "github_actions_collab1" {
+  rule      = "detect-collaborator1-alias-creation"
+  target_id = "TriggerGitHubActionCollab1"
   arn       = aws_cloudwatch_event_api_destination.github.arn
-  role_arn  = var.eventbridge_role_arn  # Use the role ARN from variable
+  role_arn  = var.eventbridge_role_arn
 
   input_transformer {
     input_paths = {
@@ -62,7 +62,31 @@ resource "aws_cloudwatch_event_target" "github_actions" {
     }
     input_template = <<EOF
 {
-  "event_type": "update_supervisor",
+  "event_type": "update_supervisor_collab1",
+  "client_payload": {
+    "agent_id": <agentId>,
+    "new_alias_id": <aliasId>
+  }
+}
+EOF
+  }
+}
+
+# Add GitHub target for Collaborator 2
+resource "aws_cloudwatch_event_target" "github_actions_collab2" {
+  rule      = "detect-collaborator2-alias-creation"
+  target_id = "TriggerGitHubActionCollab2"
+  arn       = aws_cloudwatch_event_api_destination.github.arn
+  role_arn  = var.eventbridge_role_arn
+
+  input_transformer {
+    input_paths = {
+      agentId  = "$.detail.requestParameters.agentId"
+      aliasId  = "$.detail.responseElements.agentAlias.agentAliasId"
+    }
+    input_template = <<EOF
+{
+  "event_type": "update_supervisor_collab2",
   "client_payload": {
     "agent_id": <agentId>,
     "new_alias_id": <aliasId>
