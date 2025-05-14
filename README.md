@@ -2,6 +2,7 @@
 This repository contains automation for managing AWS Bedrock agent collaborators and their aliases using Terraform and GitHub Actions.
 
 ## Repository Structure
+```
 bedrock_agent_automation/
 ├── .github/
 │   └── workflows/
@@ -18,6 +19,7 @@ bedrock_agent_automation/
 ├── supervisor-update-collab-2/
 │   └── main.tf
 └── README.md
+```
 
  ### 1. EventBridge Configuration
 Located in `event_bridge/`:
