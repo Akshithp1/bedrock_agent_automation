@@ -123,5 +123,3 @@ resource "aws_bedrockagent_agent_collaborator" "collaborator_2" {
 
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
-  depends_on = [time_sleep.wait_after_disassociate]
-}
